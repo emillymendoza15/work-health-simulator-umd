@@ -1,261 +1,229 @@
 import streamlit as st
+import numpy as np
+import matplotlib.pyplot as plt
 
-# --------------------------------------------------
-# Page Setup
-# --------------------------------------------------
-st.set_page_config(page_title="Many Ways to Be Here", layout="centered")
+# -------------------------------------------------
+# Handle Restart SAFELY (top-level)
+# -------------------------------------------------
+if st.session_state.get("do_reset", False):
+    st.session_state.clear()
+    st.session_state["do_reset"] = False
+    st.rerun()
 
-# --------------------------------------------------
-# Global Styling
-# --------------------------------------------------
+# -------------------------------------------------
+# Page Configuration
+# -------------------------------------------------
+st.set_page_config(
+    page_title="Adolescent Employment & Health Outcomes",
+    layout="wide"
+)
+
+# -------------------------------------------------
+# Title & Introduction
+# -------------------------------------------------
+st.title("Adolescent Employment, Academic Engagement, and Health Outcomes 🐢💛🖤❤️")
+st.subheader("An Exploratory Biomedical Research Simulation")
+
 st.markdown("""
-<style>
-    :root {
-        --nyu-purple: #57068c;
-        --light-violet: #f6f2fb;
-    }
+This interactive project explores how **employment during adolescence** may be associated with  
+**academic engagement, cognitive load, stress exposure, and long-term health trends**.
 
-    .stApp {
-        background-color: var(--light-violet);
-    }
+**Disclaimer:**  
+This is a self-directed, exploratory model informed by published research.  
+It presents *population-level associations*, not individual predictions or medical advice.
+""")
 
-    html, body, p, span, label, li, div {
-        color: black !important;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    }
+st.markdown("---")
 
-    h1, h2, h3 {
-        color: var(--nyu-purple) !important;
-        font-weight: 700;
-    }
+# =================================================
+# SIDEBAR — INPUTS WITH SAFE STATE MANAGEMENT
+# =================================================
+st.sidebar.header("Input Parameters")
 
-    .section-card {
-        background-color: white;
-        padding: 1.5rem;
-        border-radius: 14px;
-        margin-bottom: 1.5rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    }
-
-    .quote {
-        font-style: italic;
-        background: white;
-        border-left: 4px solid var(--nyu-purple);
-        padding: 0.75rem 1rem;
-        border-radius: 8px;
-        margin-top: 0.75rem;
-    }
-
-    .mosaic-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 1.25rem;
-        margin-top: 1.5rem;
-    }
-
-    .mosaic-card {
-        background: white;
-        border-left: 4px solid var(--nyu-purple);
-        border-radius: 12px;
-        padding: 1rem 1.25rem;
-        font-style: italic;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    }
-
-    .stButton > button {
-        background-color: white !important;
-        color: black !important;
-        border: 2px solid var(--nyu-purple) !important;
-        border-radius: 10px;
-        padding: 0.4rem 1rem;
-        font-weight: 600;
-    }
-
-    .stButton > button:hover {
-        background-color: var(--nyu-purple) !important;
-        color: white !important;
-    }
-
-    .footer {
-        text-align: center;
-        font-size: 0.85rem;
-        margin-top: 3rem;
-        padding-bottom: 1rem;
-        color: #444;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# --------------------------------------------------
-# Session State
-# --------------------------------------------------
-if "page" not in st.session_state:
-    st.session_state.page = 0
-
-if "selected_elements" not in st.session_state:
-    st.session_state.selected_elements = []
-
-# --------------------------------------------------
-# Navigation Helpers
-# --------------------------------------------------
-def next_page():
-    st.session_state.page += 1
-
-def prev_page():
-    st.session_state.page -= 1
-
-def reset_app():
-    st.session_state.page = 0
-    st.session_state.selected_elements = []
-
-# --------------------------------------------------
-# Data
-# --------------------------------------------------
-elements = {
-    "🚇 Navigating the City Every Day": {
-        "insights": [
-            "Plans their day around one dependable train line and builds buffer time automatically.",
-            "Uses commute time to mentally rese music, podcasts, zoning out."
-        ],
-        "quote": "Some days the train works, some days it doesn’t. You learn to stop fighting it."
-    },
-    "🕒 Balancing School With Work or Family": {
-        "insights": [
-            "Plans by the week, not the day flexibility matters more than perfection.",
-            "Communicates early instead of apologizing after."
-        ],
-        "quote": "I don’t have perfect weeks I have manageable ones."
-    },
-    "🏙️ Living in Shared or Crowded Spaces": {
-        "insights": [
-            "Finds one reliable quiet place and treats it like home base.",
-            "Accepts that focus looks different headphones become essential."
-        ],
-        "quote": "Privacy is a privilege, so you get creative about finding space."
-    },
-    "😴 Living With an Inconsistent Sleep Rhythm": {
-        "insights": [
-            "Focuses on recovery instead of chasing perfect routines.",
-            "Listens to how rested they feel, not the clock."
-        ],
-        "quote": "I stopped fixing my sleep and started listening to my body."
-    },
-    "🥡 Eating Life On-the-Go": {
-        "insights": [
-            "Keeps a rotation of dependable meals and snacks.",
-            "Treats food as fuel during busy weeks."
-        ],
-        "quote": "Some days food is fuel, not an experience and that’s okay."
-    },
-    "🌡️ Existing Through Every Season": {
-        "insights": [
-            "Over-prepares with layers, water, and backups.",
-            "Slows expectations on extreme weather days."
-        ],
-        "quote": "You don’t cancel plans because of weather you adapt."
-    }
+# Defaults
+defaults = {
+    "preset": "Custom",
+    "work_hours": 20,
+    "sleep_hours": 7.5,
+    "academic_load": "Moderate",
+    "homework_hours": 8
 }
 
-# --------------------------------------------------
-# Pages
-# --------------------------------------------------
-def page_welcome():
-    st.title("Many Ways to Be Here")
-    st.subheader("A reflection on student life, adaptation, and community.")
-    st.caption("Step 1 of 4")
+for k, v in defaults.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
+
+# Preset selector
+preset = st.sidebar.selectbox(
+    "Preset Scenarios",
+    [
+        "Custom",
+        "Moderate Work + Good Sleep",
+        "High Work + Low Sleep",
+        "Low Work + Heavy Academics"
+    ],
+    index=[
+        "Custom",
+        "Moderate Work + Good Sleep",
+        "High Work + Low Sleep",
+        "Low Work + Heavy Academics"
+    ].index(st.session_state.preset)
+)
+
+# Apply preset ONCE per change
+if preset != st.session_state.preset:
+    st.session_state.preset = preset
+
+    if preset == "Moderate Work + Good Sleep":
+        st.session_state.update({
+            "work_hours": 15,
+            "sleep_hours": 8.0,
+            "academic_load": "Moderate",
+            "homework_hours": 9
+        })
+    elif preset == "High Work + Low Sleep":
+        st.session_state.update({
+            "work_hours": 30,
+            "sleep_hours": 6.0,
+            "academic_load": "Heavy",
+            "homework_hours": 5
+        })
+    elif preset == "Low Work + Heavy Academics":
+        st.session_state.update({
+            "work_hours": 5,
+            "sleep_hours": 7.0,
+            "academic_load": "Heavy",
+            "homework_hours": 12
+        })
+
+# Sliders
+work_hours = st.sidebar.slider("Weekly Work Hours", 0, 40, st.session_state.work_hours)
+sleep_hours = st.sidebar.slider("Average Sleep Per Night (hours)", 5.0, 9.0, st.session_state.sleep_hours, 0.5)
+academic_load_label = st.sidebar.selectbox(
+    "Academic Load",
+    ["Light", "Moderate", "Heavy"],
+    index=["Light", "Moderate", "Heavy"].index(st.session_state.academic_load)
+)
+homework_hours = st.sidebar.slider("Homework / Study Hours per Week", 0, 15, st.session_state.homework_hours)
+
+# Persist
+st.session_state.work_hours = work_hours
+st.session_state.sleep_hours = sleep_hours
+st.session_state.academic_load = academic_load_label
+st.session_state.homework_hours = homework_hours
+
+st.sidebar.markdown("---")
+run_simulation = st.sidebar.button("Run Simulation")
+
+# Restart button (SAFE)
+if st.sidebar.button("Restart Simulation"):
+    st.session_state["do_reset"] = True
+
+# -------------------------------------------------
+# Convert Academic Load
+# -------------------------------------------------
+academic_load_map = {"Light": 0.3, "Moderate": 0.6, "Heavy": 1.0}
+academic_load = academic_load_map[academic_load_label]
+
+# -------------------------------------------------
+# MODEL LOGIC
+# -------------------------------------------------
+def run_model(work_hours, sleep_hours, academic_load, homework_hours):
+    W_norm = work_hours / 40
+    H_norm = homework_hours / 15
+    sleep_deficit = max(0, (8 - sleep_hours) / 3)
+
+    if work_hours <= 20:
+        work_penalty = 0.2 * W_norm
+    else:
+        work_penalty = 0.1 + 0.6 * ((work_hours - 20) / 20)
+
+    AEI_raw = (0.5 * H_norm) - work_penalty - (0.3 * sleep_deficit)
+    AEI = np.clip((AEI_raw + 0.5) * 100, 0, 100)
+
+    CLS_raw = (0.5 * academic_load) + (0.3 * sleep_deficit) + (0.2 * W_norm)
+    CLS = "Low" if CLS_raw < 0.4 else "Moderate" if CLS_raw < 0.7 else "High"
+
+    SRI_raw = (0.4 * sleep_deficit) + (0.35 * W_norm) + (0.25 * academic_load)
+    SRI = "Low" if SRI_raw < 0.4 else "Moderate" if SRI_raw < 0.7 else "Elevated"
+
+    LHR_raw = (0.5 * sleep_deficit) + (0.4 * W_norm) + (0.1 * academic_load)
+    LHR = "Minimal" if LHR_raw < 0.4 else "Increasing" if LHR_raw < 0.7 else "Elevated"
+
+    return AEI, CLS, SRI, LHR
+
+# =================================================
+# RESULTS
+# =================================================
+if run_simulation:
+    st.header("Simulation Results")
+
+    AEI, CLS, SRI, LHR = run_model(
+        work_hours, sleep_hours, academic_load, homework_hours
+    )
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Academic Engagement Index", f"{int(AEI)} / 100")
+    c2.metric("Cognitive Load", CLS)
+    c3.metric("Stress Risk", SRI)
+    c4.metric("Health Risk Trend", LHR)
+
+    st.markdown("---")
+
+    st.subheader("Work Hours vs Academic Engagement")
+
+    hours = np.arange(0, 41)
+    engagement = []
+
+    for h in hours:
+        aei, _, _, _ = run_model(h, sleep_hours, academic_load, homework_hours)
+        engagement.append(aei)
+
+    current_aei, _, _, _ = run_model(
+        work_hours, sleep_hours, academic_load, homework_hours
+    )
+
+    fig, ax = plt.subplots()
+    ax.plot(hours, engagement, label="Modeled Trend")
+    ax.scatter(work_hours, current_aei, s=80, label="Current Scenario")
+    ax.axvline(20, linestyle="--", alpha=0.6, label="~20 hr threshold")
+
+    ax.set_xlabel("Weekly Work Hours")
+    ax.set_ylabel("Academic Engagement Index")
+    ax.set_title(
+        "Work Hours vs Academic Engagement\n"
+        "(Conditioned on Sleep, Academic Load, and Homework)"
+    )
+    ax.legend()
+
+    st.pyplot(fig)
+
+# =================================================
+# WHY UMD
+# =================================================
+st.markdown("---")
+if st.button("Why UMD?"):
+    st.subheader("Why This Project and UMD")
 
     st.markdown("""
-    <div class="section-card">
-    This project explores how students experience life differently 
-    not through achievements, but through daily realities.
+    This project was created to reflect how I approach learning when given the opportunity
+    to explore complex questions. Rather than simply expressing interest, I wanted to
+    demonstrate **analytical thinking, research awareness, and interdisciplinary problem-solving**.
 
-    In a city shaped by movement and diversity, no two paths look the same.
-    Community forms when those differences are seen.
-    </div>
-    """, unsafe_allow_html=True)
+    UMD’s emphasis on undergraduate research, biomedical sciences, and data-informed inquiry
+    aligns strongly with my interest. With access to University of Maryland’s academic environment and
+    research opportunities, I am confident I can continue developing work like this at a
+    deeper and more rigorous level if given a chance to attend and prove myself. - Emily Mendoza Dominguez
+    """)
 
-    st.button("Begin", on_click=next_page)
+# =================================================
+# REFERENCES
+# =================================================
+st.markdown("---")
+st.subheader("References")
 
-def page_build():
-    st.title("Build a Day in the City")
-    st.caption("Step 2 of 4")
-    st.write("Select everything that feels true to your experience.")
-
-    selections = []
-    for label in elements:
-        checked = st.checkbox(label, value=(label in st.session_state.selected_elements))
-        if checked:
-            selections.append(label)
-
-    st.session_state.selected_elements = selections
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.button("Back", on_click=prev_page)
-    with col2:
-        if selections:
-            st.button("Finish", on_click=next_page)
-
-def page_shapes():
-    st.title("What This Experience Shapes")
-    st.caption("Step 3 of 4")
-
-    for item in st.session_state.selected_elements:
-        st.markdown(f"<div class='section-card'><h3>{item}</h3>", unsafe_allow_html=True)
-
-        for insight in elements[item]["insights"]:
-            st.write("• " + insight)
-
-        st.markdown(
-            f"<div class='quote'>“{elements[item]['quote']}”</div></div>",
-            unsafe_allow_html=True
-        )
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.button("Back", on_click=prev_page)
-    with col2:
-        st.button("Next", on_click=next_page)
-
-def page_why():
-    st.title("Why This Matters")
-    st.caption("Step 4 of 4")
-
-    st.markdown("""
-    <div class="section-card">
-    Students arrive with different routines, responsibilities, and starting points 
-    all shaped by environment and circumstance.
-
-    Recognizing these differences is part of what turns a shared space
-    into a real community.
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("### Student Voices")
-
-    st.markdown("""
-    <div class="mosaic-grid">
-        <div class="mosaic-card">“I don’t have one routine I adjust every week.”</div>
-        <div class="mosaic-card">“My commute is the only time my thoughts slow down.”</div>
-        <div class="mosaic-card">“Some weeks, surviving is success.”</div>
-        <div class="mosaic-card">“I learned to stop comparing my pace to other people’s.”</div>
-        <div class="mosaic-card">“Community doesn’t mean sameness — it means awareness.”</div>
-        <div class="mosaic-card">“I found balance by letting go of perfection.”</div>
-        <div class="mosaic-card">“You make space where you can.”</div>
-        <div class="mosaic-card">“Belonging isn’t automatic — it’s built.”</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.button("Back", on_click=prev_page)
-    with col2:
-        st.button("Restart", on_click=reset_app)
-
-    st.markdown("<div class='footer'>Created by Emily Mendoza Dominguez</div>", unsafe_allow_html=True)
-
-# --------------------------------------------------
-# Router
-# --------------------------------------------------
-pages = [page_welcome, page_build, page_shapes, page_why]
-pages[st.session_state.page]()
+st.markdown("""
+- National Academies of Sciences. *Protecting Youth at Work*  
+- Grant et al. (2021). Wisconsin Center for Education Research  
+- Adolescent Employment and Health Outcomes. *NIH (PMC)*
+""")
